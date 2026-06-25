@@ -9,73 +9,26 @@ import { GET_ALL_ATTENDANCES } from "@/graphql/query/getAttendances";
 import { GET_ALL_LEAVES } from "@/graphql/query/getLeaves";
 import { GET_ALL_TODOS } from "@/graphql/query/getTodos";
 
-// --- Dummy Data ---
-
-const recentActivity = [
-  {
-    name: "John",
-    action: "clocked in",
-    time: "2 min ago",
-    dot: "bg-[#1D9E75]",
-  },
-  {
-    name: "Priya",
-    action: "applied for leave",
-    time: "15 min ago",
-    dot: "bg-[#EF9F27]",
-  },
-  {
-    name: "Rahul",
-    action: "completed a todo",
-    time: "40 min ago",
-    dot: "bg-[#378ADD]",
-  },
-  {
-    name: "Aman",
-    action: "clocked out",
-    time: "1 hr ago",
-    dot: "bg-[#D85A30]",
-  },
-  {
-    name: "Riya",
-    action: "updated attendance",
-    time: "2 hr ago",
-    dot: "bg-[#1D9E75]",
-  },
-];
-
-const leaveRequests = [
-  { name: "John", type: "Casual", dates: "Jun 26–28", status: "pending" },
-  { name: "Rahul", type: "Sick", dates: "Jun 27", status: "approved" },
-  { name: "Priya", type: "Personal", dates: "Jul 1–3", status: "rejected" },
-  { name: "Aman", type: "Casual", dates: "Jul 5", status: "pending" },
-];
-
-const statusStyle: Record<string, string> = {
-  pending: "bg-[#FAEEDA] text-[#854F0B]",
-  approved: "bg-[#EAF3DE] text-[#3B6D11]",
-  rejected: "bg-[#FCEBEB] text-[#A32D2D]",
-};
-
+// --- Dynamically computed below ---
 export default function DashboardPage() {
   const commonVars = {
     request: {
-      pageCriteria: { enablePage: false, pageSize: 1, skip: 0 },
+      pageCriteria: { enablePage: false, pageSize: 50, skip: 0 },
     },
   };
 
-  const { data: empData, loading: empLoading } = useQuery<any>(GET_ALL_EMPLOYEES, { variables: commonVars, fetchPolicy: "cache-and-network" });
-  const { data: attData, loading: attLoading } = useQuery<any>(GET_ALL_ATTENDANCES, { variables: commonVars, fetchPolicy: "cache-and-network" });
-  const { data: leaveData, loading: leaveLoading } = useQuery<any>(GET_ALL_LEAVES, { variables: commonVars, fetchPolicy: "cache-and-network" });
-  const { data: todoData, loading: todoLoading } = useQuery<any>(GET_ALL_TODOS, { variables: commonVars, fetchPolicy: "cache-and-network" });
+  const { data: empData, loading: empLoading, error: empError } = useQuery<any>(GET_ALL_EMPLOYEES, { variables: commonVars, fetchPolicy: "cache-and-network" });
+  const { data: attData, loading: attLoading, error: attError } = useQuery<any>(GET_ALL_ATTENDANCES, { variables: commonVars, fetchPolicy: "cache-and-network" });
+  const { data: leaveData, loading: leaveLoading, error: leaveError } = useQuery<any>(GET_ALL_LEAVES, { variables: commonVars, fetchPolicy: "cache-and-network" });
+  const { data: todoData, loading: todoLoading, error: todoError } = useQuery<any>(GET_ALL_TODOS, { variables: commonVars, fetchPolicy: "cache-and-network" });
 
   const totalEmployees = empData?.getAllEmployees?.data?.employees?.length || 0;
-  // Use meta totalCount if available, otherwise array length
   const totalAttendances = attData?.getAllAttendances?.meta?.totalCount ?? attData?.getAllAttendances?.data?.attendances?.length ?? 0;
   const totalLeaves = leaveData?.getAllLeaves?.meta?.totalCount ?? leaveData?.getAllLeaves?.data?.leaves?.length ?? 0;
   const totalTodos = todoData?.getAllTodos?.meta?.totalCount ?? todoData?.getAllTodos?.data?.todos?.length ?? 0;
 
   const isLoading = empLoading || attLoading || leaveLoading || todoLoading;
+  const hasError = empError || attError || leaveError || todoError;
 
   if (isLoading) {
     return (
@@ -85,6 +38,69 @@ export default function DashboardPage() {
       </div>
     );
   }
+
+  if (hasError) {
+    return (
+      <div className="flex flex-col items-center justify-center h-full min-h-[50vh]">
+        <div className="bg-red-50 text-red-600 px-6 py-4 rounded-xl border border-red-200 shadow-sm text-center">
+          <p className="font-bold text-lg mb-1">Unable to load dashboard data.</p>
+          <p className="text-sm">Please ensure the backend server is running and database is connected.</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Helper to map EmployeeId to Name
+  const employeesList = empData?.getAllEmployees?.data?.employees || [];
+  const getEmpName = (empId: string | null) => {
+    if (!empId) return "Unknown";
+    const e = employeesList.find((e: any) => e.employeeId === empId || e.userId === empId);
+    return e ? `${e.firstName} ${e.lastName}` : "Unknown";
+  };
+
+  // Compute Pending Leave Requests
+  const leavesList = leaveData?.getAllLeaves?.data?.leaves || [];
+  const leaveRequests = leavesList
+    .filter((l: any) => l.status === "Pending")
+    .slice(0, 5) // Take top 5
+    .map((l: any) => ({
+      name: getEmpName(l.employeeId),
+      type: "Leave Request", // API doesn't have type natively, generalize it
+      dates: new Date(l.clockIn).toLocaleDateString("en-US", { month: "short", day: "numeric" }),
+      status: "pending"
+    }));
+
+  // Compute Recent Activity (Mix recent attendances + todos)
+  const attendancesList = attData?.getAllAttendances?.data?.attendances || [];
+  const todosList = todoData?.getAllTodos?.data?.todos || [];
+
+  const mappedAttendances = attendancesList.map((a: any) => ({
+    name: getEmpName(a.employeeId),
+    action: a.clockOut ? "clocked out" : "clocked in",
+    dateObj: new Date(a.clockOut || a.clockIn),
+    dot: "bg-[#1D9E75]"
+  }));
+
+  const mappedTodos = todosList.map((t: any) => ({
+    name: getEmpName(t.userId),
+    action: t.isCompleted ? "completed a task" : "added a task",
+    dateObj: t.dueDate ? new Date(t.dueDate) : new Date(),
+    dot: "bg-[#378ADD]"
+  }));
+
+  const recentActivity = [...mappedAttendances, ...mappedTodos]
+    .sort((a, b) => b.dateObj.getTime() - a.dateObj.getTime())
+    .slice(0, 5)
+    .map(activity => ({
+      ...activity,
+      time: activity.dateObj.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })
+    }));
+
+  const statusStyle: Record<string, string> = {
+    pending: "bg-[#FAEEDA] text-[#854F0B]",
+    approved: "bg-[#EAF3DE] text-[#3B6D11]",
+    rejected: "bg-[#FCEBEB] text-[#A32D2D]",
+  };
 
   return (
     <div className="p-8 space-y-8 bg-gradient-to-br from-slate-50 to-gray-100 min-h-full rounded-2xl shadow-inner">
@@ -142,30 +158,32 @@ export default function DashboardPage() {
         <div className="lg:col-span-3 bg-white/80 backdrop-blur-md rounded-2xl border border-white/40 shadow-sm p-6 hover:shadow-md transition-shadow">
           <div className="flex justify-between items-center mb-6">
             <h2 className="text-base font-bold text-slate-800">
-              Recent Activity (Mock)
+              Recent Activity
             </h2>
-            <button className="text-sm font-medium text-[#1D9E75] hover:text-[#0f6e56] hover:underline transition-colors">
-              View all
-            </button>
+            <span className="text-xs font-medium text-slate-400 bg-slate-50 px-2 py-1 rounded-md border border-slate-100">Live Data</span>
           </div>
 
           <div className="divide-y divide-slate-100">
-            {recentActivity.map((item, i) => (
-              <div key={i} className="flex items-center gap-4 py-3.5 group">
-                <div
-                  className={`w-2.5 h-2.5 rounded-full shadow-sm flex-shrink-0 ${item.dot} group-hover:scale-125 transition-transform`}
-                />
-                <div className="flex-1">
-                  <p className="text-sm text-slate-700">
-                    <span className="font-semibold text-slate-900">
-                      {item.name}
-                    </span>{" "}
-                    {item.action}
-                  </p>
+            {recentActivity.length === 0 ? (
+              <p className="text-sm text-gray-400 italic py-4 text-center">No recent activity found.</p>
+            ) : (
+              recentActivity.map((item, i) => (
+                <div key={i} className="flex items-center gap-4 py-3.5 group">
+                  <div
+                    className={`w-2.5 h-2.5 rounded-full shadow-sm flex-shrink-0 ${item.dot} group-hover:scale-125 transition-transform`}
+                  />
+                  <div className="flex-1">
+                    <p className="text-sm text-slate-700">
+                      <span className="font-semibold text-slate-900">
+                        {item.name}
+                      </span>{" "}
+                      {item.action}
+                    </p>
+                  </div>
+                  <span className="text-xs font-medium text-slate-400 bg-slate-50 px-2 py-1 rounded-md">{item.time}</span>
                 </div>
-                <span className="text-xs font-medium text-slate-400 bg-slate-50 px-2 py-1 rounded-md">{item.time}</span>
-              </div>
-            ))}
+              ))
+            )}
           </div>
         </div>
 
@@ -173,29 +191,31 @@ export default function DashboardPage() {
         <div className="lg:col-span-2 bg-white/80 backdrop-blur-md rounded-2xl border border-white/40 shadow-sm p-6 hover:shadow-md transition-shadow">
           <div className="flex justify-between items-center mb-6">
             <h2 className="text-base font-bold text-slate-800">
-              Leave Requests (Mock)
+              Pending Leave Requests
             </h2>
-            <button className="text-sm font-medium text-[#1D9E75] hover:text-[#0f6e56] hover:underline transition-colors">
-              See all
-            </button>
+            <span className="text-xs font-medium text-slate-400 bg-slate-50 px-2 py-1 rounded-md border border-slate-100">Live Data</span>
           </div>
 
           <div className="divide-y divide-slate-100">
-            {leaveRequests.map((l, i) => (
-              <div key={i} className="flex items-center justify-between py-3.5 group">
-                <div>
-                  <p className="text-sm font-semibold text-slate-900 group-hover:text-[#1D9E75] transition-colors">{l.name}</p>
-                  <p className="text-xs font-medium text-slate-500 mt-0.5">
-                    {l.type} · {l.dates}
-                  </p>
+            {leaveRequests.length === 0 ? (
+              <p className="text-sm text-gray-400 italic py-4 text-center">No pending leave requests.</p>
+            ) : (
+              leaveRequests.map((l, i) => (
+                <div key={i} className="flex items-center justify-between py-3.5 group">
+                  <div>
+                    <p className="text-sm font-semibold text-slate-900 group-hover:text-[#1D9E75] transition-colors">{l.name}</p>
+                    <p className="text-xs font-medium text-slate-500 mt-0.5">
+                      {l.type} · {l.dates}
+                    </p>
+                  </div>
+                  <span
+                    className={`text-[11px] tracking-wide font-bold px-3 py-1.5 rounded-full capitalize shadow-sm ${statusStyle[l.status]}`}
+                  >
+                    {l.status}
+                  </span>
                 </div>
-                <span
-                  className={`text-[11px] tracking-wide font-bold px-3 py-1.5 rounded-full capitalize shadow-sm ${statusStyle[l.status]}`}
-                >
-                  {l.status}
-                </span>
-              </div>
-            ))}
+              ))
+            )}
           </div>
         </div>
       </div>

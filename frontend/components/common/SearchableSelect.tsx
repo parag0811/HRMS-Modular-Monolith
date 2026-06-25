@@ -48,30 +48,30 @@ export default function SearchableSelect({
         type="button"
         disabled={disabled}
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full flex items-center justify-between px-3 py-2 text-sm border border-gray-200 rounded-lg bg-white text-gray-800 focus:outline-none focus:ring-1 focus:ring-[#1D9E75] focus:border-[#1D9E75] transition disabled:opacity-50 disabled:cursor-not-allowed"
+        className="w-full flex items-center justify-between px-3.5 py-2.5 text-sm border border-gray-200 rounded-lg bg-white text-gray-900 shadow-sm focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-gray-900 hover:bg-gray-50 transition disabled:opacity-50 disabled:cursor-not-allowed"
       >
-        <span className={selectedOption ? "text-gray-900 line-clamp-1" : "text-gray-400"}>
+        <span className={selectedOption ? "text-gray-900 line-clamp-1 font-medium" : "text-gray-400"}>
           {selectedOption ? selectedOption.label : placeholder}
         </span>
-        <ChevronDown size={16} className="text-gray-400" />
+        <ChevronDown size={16} className="text-gray-400 flex-shrink-0 ml-2" />
       </button>
 
       {isOpen && (
-        <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg overflow-hidden animate-in fade-in slide-in-from-top-2">
-          <div className="p-2 border-b border-gray-100 flex items-center gap-2">
-            <Search size={14} className="text-gray-400" />
+        <div className="absolute z-50 w-full mt-2 bg-white border border-gray-200 rounded-xl shadow-lg overflow-hidden animate-in fade-in slide-in-from-top-1">
+          <div className="p-2 border-b border-gray-100 flex items-center gap-2 bg-gray-50/50">
+            <Search size={14} className="text-gray-400 ml-1" />
             <input
               type="text"
               autoFocus
               placeholder="Search..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full text-sm outline-none text-gray-700"
+              className="w-full text-sm outline-none text-gray-900 bg-transparent placeholder-gray-400 py-1"
             />
           </div>
-          <div className="max-h-60 overflow-y-auto p-1">
+          <div className="max-h-60 overflow-y-auto p-1.5">
             {filteredOptions.length === 0 ? (
-              <div className="p-2 text-sm text-center text-gray-500">No results found</div>
+              <div className="p-3 text-sm text-center text-gray-500">No results found</div>
             ) : (
               filteredOptions.map((opt) => (
                 <button
@@ -82,14 +82,14 @@ export default function SearchableSelect({
                     setIsOpen(false);
                     setSearch("");
                   }}
-                  className={`w-full text-left px-2 py-1.5 text-sm rounded-md flex items-center justify-between transition-colors ${
+                  className={`w-full text-left px-3 py-2 text-sm rounded-md flex items-center justify-between transition-colors ${
                     opt.value === value
-                      ? "bg-[#1D9E75]/10 text-[#1D9E75] font-medium"
+                      ? "bg-gray-100 text-gray-900 font-medium"
                       : "text-gray-700 hover:bg-gray-50"
                   }`}
                 >
                   <span className="line-clamp-1">{opt.label}</span>
-                  {opt.value === value && <Check size={14} />}
+                  {opt.value === value && <Check size={16} className="text-gray-900 flex-shrink-0" />}
                 </button>
               ))
             )}

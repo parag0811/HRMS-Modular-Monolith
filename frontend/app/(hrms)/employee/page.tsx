@@ -3,13 +3,14 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@apollo/client/react";
 import Table, { Column } from "@/components/common/Table";
-import { Plus, Search, Loader2, AlertCircle, X } from "lucide-react";
+import { Plus, Search, Loader2, AlertCircle, X, ShieldAlert } from "lucide-react";
 import { GET_ALL_EMPLOYEES } from "@/graphql/query/getEmployees";
 import {
   CREATE_EMPLOYEE,
   UPDATE_EMPLOYEE,
   DELETE_EMPLOYEE,
 } from "@/graphql/mutation/employeeMutations";
+import { useRole } from "@/context/RoleContext";
 
 // --- Types ---
 
@@ -286,6 +287,7 @@ function DeleteModal({
 // --- Page ---
 
 export default function EmployeePage() {
+  const { role } = useRole();
   const [search, setSearch] = useState("");
   const [modalOpen, setModalOpen] = useState(false);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
@@ -436,17 +438,20 @@ export default function EmployeePage() {
   // --- Action Buttons ---
 
   function ActionButtons({ item }: { item: EmployeeItem }) {
+    const isRestricted = role !== "HR";
     return (
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2" title={isRestricted ? "HR Permission Required" : ""}>
         <button
           onClick={() => handleOpenEdit(item)}
-          className="text-xs px-3 py-1.5 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 hover:border-gray-300 transition-colors"
+          disabled={isRestricted}
+          className="text-xs px-3 py-1.5 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 hover:border-gray-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
           Edit
         </button>
         <button
           onClick={() => handleOpenDelete(item)}
-          className="text-xs px-3 py-1.5 rounded-lg border border-[#F5C4B3] text-[#993C1D] hover:bg-[#FAECE7] transition-colors"
+          disabled={isRestricted}
+          className="text-xs px-3 py-1.5 rounded-lg border border-[#F5C4B3] text-[#993C1D] hover:bg-[#FAECE7] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
           Delete
         </button>
@@ -493,20 +498,30 @@ export default function EmployeePage() {
     <div className="p-6 space-y-5">
       <div className="flex items-start justify-between">
         <div>
-          <h1 className="text-xl font-semibold text-gray-900">
+          <h1 className="text-xl font-semibold text-gray-900 tracking-tight">
             Employee Directory
           </h1>
           <p className="text-sm text-gray-400 mt-0.5">
             Manage your organization's employees and their details.
           </p>
         </div>
-        <button
-          onClick={handleOpenCreate}
-          className="flex items-center gap-2 bg-[#1D9E75] hover:bg-[#0F6E56] text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
-        >
-          <Plus size={16} />
-          Add Employee
-        </button>
+        <div className="flex items-center gap-3">
+          {role !== "HR" && (
+            <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 bg-amber-50 text-amber-700 rounded-md border border-amber-200 text-[10px] font-bold uppercase tracking-wider">
+              <ShieldAlert size={14} />
+              Read Only
+            </div>
+          )}
+          <button
+            onClick={handleOpenCreate}
+            disabled={role !== "HR"}
+            title={role !== "HR" ? "HR Permission Required" : ""}
+            className="flex items-center gap-2 bg-gray-900 hover:bg-gray-800 shadow-sm text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <Plus size={16} />
+            Add Employee
+          </button>
+        </div>
       </div>
 
       <div className="relative max-w-sm">
@@ -519,14 +534,14 @@ export default function EmployeePage() {
           placeholder="Search employees..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="w-full pl-9 pr-4 py-2 text-sm border border-gray-200 rounded-lg bg-white text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-[#1D9E75] focus:border-[#1D9E75] transition"
+          className="w-full pl-9 pr-4 py-2 text-sm border border-gray-200 rounded-lg bg-white text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-gray-900 transition"
         />
       </div>
 
       {/* Loading State */}
       {loading && employees.length === 0 && (
         <div className="flex items-center justify-center py-12">
-          <Loader2 size={24} className="animate-spin text-[#1D9E75]" />
+          <Loader2 size={24} className="animate-spin text-gray-900" />
           <span className="ml-2 text-sm text-gray-500">Loading employees...</span>
         </div>
       )}

@@ -7,6 +7,8 @@ import { Plus, Search, Loader2, AlertCircle, X } from "lucide-react";
 import { GET_ALL_TODOS } from "@/graphql/query/getTodos";
 import { CREATE_TODO, UPDATE_TODO, DELETE_TODO } from "@/graphql/mutation/todoMutations";
 import { GET_ALL_EMPLOYEES } from "@/graphql/query/getEmployees";
+import SearchableSelect from "@/components/common/SearchableSelect";
+import { useRole } from "@/context/RoleContext";
 
 // --- Types ---
 
@@ -25,6 +27,7 @@ interface TodoFormData {
   description: string;
   dueDate: string;
   isCompleted: boolean;
+  userId: string;
 }
 
 const defaultFormData: TodoFormData = {
@@ -32,6 +35,7 @@ const defaultFormData: TodoFormData = {
   description: "",
   dueDate: new Date().toISOString().split("T")[0],
   isCompleted: false,
+  userId: "",
 };
 
 // --- Status Badge ---
@@ -58,6 +62,7 @@ function TodoModal({
   setFormData,
   isEdit,
   loading,
+  employees,
 }: {
   isOpen: boolean;
   onClose: () => void;
@@ -66,6 +71,7 @@ function TodoModal({
   setFormData: (data: TodoFormData) => void;
   isEdit: boolean;
   loading: boolean;
+  employees: any[];
 }) {
   if (!isOpen) return null;
 
@@ -106,6 +112,21 @@ function TodoModal({
               value={formData.dueDate}
               onChange={(e) => setFormData({ ...formData, dueDate: e.target.value })}
               className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg bg-white text-gray-800 focus:outline-none focus:ring-1 focus:ring-[#1D9E75] focus:border-[#1D9E75] transition"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Assign to (Optional)</label>
+            <SearchableSelect
+              options={[
+                { value: "", label: "Unassigned" },
+                ...employees.map((e) => ({
+                  value: e.userId,
+                  label: `${e.firstName} ${e.lastName} (${e.employeeCode})`,
+                }))
+              ]}
+              value={formData.userId}
+              onChange={(val) => setFormData({ ...formData, userId: val })}
+              placeholder="Select an employee"
             />
           </div>
           <div className="flex items-center gap-2">
@@ -188,6 +209,7 @@ function DeleteModal({
 // --- Page ---
 
 export default function TodoPage() {
+  const { role } = useRole();
   const [search, setSearch] = useState("");
   const [modalOpen, setModalOpen] = useState(false);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
@@ -256,6 +278,7 @@ export default function TodoPage() {
       description: todo.description,
       dueDate: todo.dueDate ? new Date(todo.dueDate).toISOString().split("T")[0] : "",
       isCompleted: todo.isCompleted,
+      userId: todo.userId || "",
     });
     setModalOpen(true);
   };
@@ -272,6 +295,7 @@ export default function TodoPage() {
                 description: formData.description,
                 dueDate: formData.dueDate ? new Date(formData.dueDate).toISOString() : null,
                 isCompleted: formData.isCompleted,
+                userId: formData.userId || null,
               },
             },
           },
@@ -285,6 +309,7 @@ export default function TodoPage() {
                 description: formData.description,
                 dueDate: formData.dueDate ? new Date(formData.dueDate).toISOString() : null,
                 isCompleted: formData.isCompleted,
+                userId: formData.userId || null,
               },
             },
           },
@@ -326,17 +351,20 @@ export default function TodoPage() {
   // --- Action Buttons ---
 
   function ActionButtons({ todo }: { todo: TodoItem }) {
+    const isRestricted = role === "Employee";
     return (
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2" title={isRestricted ? "Restricted in Demo Role" : ""}>
         <button
           onClick={() => handleOpenEdit(todo)}
-          className="text-xs px-3 py-1.5 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 hover:border-gray-300 transition-colors"
+          disabled={isRestricted}
+          className="text-xs px-3 py-1.5 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 hover:border-gray-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
           Edit
         </button>
         <button
           onClick={() => handleOpenDelete(todo)}
-          className="text-xs px-3 py-1.5 rounded-lg border border-[#F5C4B3] text-[#993C1D] hover:bg-[#FAECE7] transition-colors"
+          disabled={isRestricted}
+          className="text-xs px-3 py-1.5 rounded-lg border border-[#F5C4B3] text-[#993C1D] hover:bg-[#FAECE7] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
           Delete
         </button>
@@ -400,7 +428,7 @@ export default function TodoPage() {
       header: "Actions",
       accessor: (row) => <ActionButtons todo={row} />,
       width: "160px",
-    },
+    }
   ];
 
   // --- Render ---
@@ -411,15 +439,17 @@ export default function TodoPage() {
       {/* Header */}
       <div className="flex items-start justify-between">
         <div>
-          <h1 className="text-xl font-semibold text-gray-900">Todo Management</h1>
+          <h1 className="text-xl font-semibold text-gray-900 tracking-tight">
+            {role === "Employee" ? "My Tasks" : "Todo Management"}
+          </h1>
           <p className="text-sm text-gray-400 mt-0.5">Manage employee tasks and reminders.</p>
         </div>
         <button
           onClick={handleOpenCreate}
-          className="flex items-center gap-2 bg-[#1D9E75] hover:bg-[#0F6E56] text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
+          className="flex items-center gap-2 bg-gray-900 hover:bg-gray-800 shadow-sm text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
         >
           <Plus size={16} />
-          Add Todo
+          {role === "Employee" ? "Add Task" : "Add Todo"}
         </button>
       </div>
 
@@ -428,18 +458,18 @@ export default function TodoPage() {
         <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
         <input
           type="text"
-          placeholder="Search todos..."
+          placeholder="Search tasks..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="w-full pl-9 pr-4 py-2 text-sm border border-gray-200 rounded-lg bg-white text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-[#1D9E75] focus:border-[#1D9E75] transition"
+          className="w-full pl-9 pr-4 py-2 text-sm border border-gray-200 rounded-lg bg-white text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-gray-900 transition"
         />
       </div>
 
       {/* Loading State */}
       {loading && todos.length === 0 && (
         <div className="flex items-center justify-center py-12">
-          <Loader2 size={24} className="animate-spin text-[#1D9E75]" />
-          <span className="ml-2 text-sm text-gray-500">Loading todos...</span>
+          <Loader2 size={24} className="animate-spin text-gray-900" />
+          <span className="ml-2 text-sm text-gray-500">Loading tasks...</span>
         </div>
       )}
 
@@ -469,6 +499,7 @@ export default function TodoPage() {
         setFormData={setFormData}
         isEdit={!!editingTodo}
         loading={creating || updating}
+        employees={employeeList}
       />
 
       {/* Delete Confirmation Modal */}

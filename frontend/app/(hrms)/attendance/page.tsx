@@ -12,6 +12,7 @@ import {
 } from "@/graphql/mutation/attendanceMutations";
 import { GET_ALL_EMPLOYEES } from "@/graphql/query/getEmployees";
 import SearchableSelect from "@/components/common/SearchableSelect";
+import { useRole } from "@/context/RoleContext";
 
 // --- Types ---
 
@@ -219,6 +220,7 @@ function DeleteModal({
 // --- Page ---
 
 export default function AttendancePage() {
+  const { role } = useRole();
   const [search, setSearch] = useState("");
   const [modalOpen, setModalOpen] = useState(false);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
@@ -357,17 +359,20 @@ export default function AttendancePage() {
   // --- Action Buttons ---
 
   function ActionButtons({ item }: { item: AttendanceItem }) {
+    const isRestricted = role === "Employee";
     return (
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2" title={isRestricted ? "Restricted in Demo Role" : ""}>
         <button
           onClick={() => handleOpenEdit(item)}
-          className="text-xs px-3 py-1.5 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 hover:border-gray-300 transition-colors"
+          disabled={isRestricted}
+          className="text-xs px-3 py-1.5 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 hover:border-gray-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
           Edit
         </button>
         <button
           onClick={() => handleOpenDelete(item)}
-          className="text-xs px-3 py-1.5 rounded-lg border border-[#F5C4B3] text-[#993C1D] hover:bg-[#FAECE7] transition-colors"
+          disabled={isRestricted}
+          className="text-xs px-3 py-1.5 rounded-lg border border-[#F5C4B3] text-[#993C1D] hover:bg-[#FAECE7] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
           Delete
         </button>
@@ -412,7 +417,7 @@ export default function AttendancePage() {
       header: "Actions",
       accessor: (row) => <ActionButtons item={row} />,
       width: "160px",
-    },
+    }
   ];
 
   // --- Render ---
@@ -421,8 +426,8 @@ export default function AttendancePage() {
     <div className="p-6 space-y-5">
       <div className="flex items-start justify-between">
         <div>
-          <h1 className="text-xl font-semibold text-gray-900">
-            Attendance Management
+          <h1 className="text-xl font-semibold text-gray-900 tracking-tight">
+            {role === "Employee" ? "My Attendance" : "Attendance Management"}
           </h1>
           <p className="text-sm text-gray-400 mt-0.5">
             Track employee clock-in and clock-out records.
@@ -430,10 +435,10 @@ export default function AttendancePage() {
         </div>
         <button
           onClick={handleOpenCreate}
-          className="flex items-center gap-2 bg-[#1D9E75] hover:bg-[#0F6E56] text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
+          className="flex items-center gap-2 bg-gray-900 hover:bg-gray-800 shadow-sm text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
         >
           <Plus size={16} />
-          Add Record
+          {role === "Employee" ? "Clock In/Out" : "Add Record"}
         </button>
       </div>
 
@@ -447,14 +452,14 @@ export default function AttendancePage() {
           placeholder="Search employees..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="w-full pl-9 pr-4 py-2 text-sm border border-gray-200 rounded-lg bg-white text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-[#1D9E75] focus:border-[#1D9E75] transition"
+          className="w-full pl-9 pr-4 py-2 text-sm border border-gray-200 rounded-lg bg-white text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-gray-900 transition"
         />
       </div>
 
       {/* Loading State */}
       {loading && attendances.length === 0 && (
         <div className="flex items-center justify-center py-12">
-          <Loader2 size={24} className="animate-spin text-[#1D9E75]" />
+          <Loader2 size={24} className="animate-spin text-gray-900" />
           <span className="ml-2 text-sm text-gray-500">Loading attendance records...</span>
         </div>
       )}
