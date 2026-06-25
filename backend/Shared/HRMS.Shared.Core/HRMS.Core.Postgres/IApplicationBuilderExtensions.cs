@@ -11,6 +11,7 @@ namespace HRMS.Core.Postgres
         {
             using var serviceScope = builder.ApplicationServices.GetRequiredService<IServiceScopeFactory>().CreateScope();
             var context = serviceScope.ServiceProvider.GetRequiredService<PostgresDbContext>();
+            context.Database.EnsureDeleted(); // Temporarily drop DB to recreate it with Employee table
             context.Database.EnsureCreated();
         }
     }

@@ -24,9 +24,17 @@ builder.Services.AddRequestTimeouts(options =>
 // Register IHttpContextAccessor for GraphQL telemetry initializer
 builder.Services.AddHttpContextAccessor();
 
+var appInsightsConnectionString = builder.Configuration["ApplicationInsights:ConnectionString"];
+if (string.IsNullOrWhiteSpace(appInsightsConnectionString))
+{
+    // Provide a dummy connection string to satisfy the OpenTelemetry exporter pipeline
+    // without actually sending data anywhere, preventing NullReferenceExceptions.
+    appInsightsConnectionString = "InstrumentationKey=00000000-0000-0000-0000-000000000000;IngestionEndpoint=https://localhost;LiveEndpoint=https://localhost";
+}
+
 builder.Services.AddApplicationInsightsTelemetry(options =>
 {
-    options.ConnectionString = builder.Configuration["ApplicationInsights:ConnectionString"];
+    options.ConnectionString = appInsightsConnectionString;
 });
 
 // Configure custom sampling telemetry processor to reduce costs significantly (10% sampling = 90%

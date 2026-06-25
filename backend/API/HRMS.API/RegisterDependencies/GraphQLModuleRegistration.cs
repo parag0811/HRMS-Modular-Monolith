@@ -1,7 +1,8 @@
-﻿using HotChocolate.Execution.Configuration;
+using HotChocolate.Execution.Configuration;
 using TodoFeature.GraphQL;
 using AttendanceFeature.GraphQL;
 using LeaveFeature.GraphQL;
+using EmployeeFeature.GraphQL;
 
 namespace HRMS.API.RegisterDependencies
 {
@@ -12,7 +13,8 @@ namespace HRMS.API.RegisterDependencies
             return builder
                 .AddTodosGraphQL()
                 .AddAttendanceGraphQL()
-                .AddLeaveGraphQL();
+                .AddLeaveGraphQL()
+                .AddEmployeeGraphQL();
         }
     }
 }

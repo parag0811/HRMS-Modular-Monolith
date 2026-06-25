@@ -10,6 +10,8 @@ import {
   UPDATE_ATTENDANCE,
   DELETE_ATTENDANCE,
 } from "@/graphql/mutation/attendanceMutations";
+import { GET_ALL_EMPLOYEES } from "@/graphql/query/getEmployees";
+import SearchableSelect from "@/components/common/SearchableSelect";
 
 // --- Types ---
 
@@ -82,6 +84,7 @@ function AttendanceModal({
   setFormData,
   isEdit,
   loading,
+  employees,
 }: {
   isOpen: boolean;
   onClose: () => void;
@@ -90,6 +93,7 @@ function AttendanceModal({
   setFormData: (data: AttendanceFormData) => void;
   isEdit: boolean;
   loading: boolean;
+  employees: any[];
 }) {
   if (!isOpen) return null;
 
@@ -104,13 +108,15 @@ function AttendanceModal({
         </h2>
         <div className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Employee ID</label>
-            <input
-              type="text"
+            <label className="block text-sm font-medium text-gray-700 mb-1">Employee</label>
+            <SearchableSelect
+              options={employees.map((e) => ({
+                value: e.employeeId,
+                label: `${e.firstName} ${e.lastName} (${e.employeeCode})`,
+              }))}
               value={formData.employeeId}
-              onChange={(e) => setFormData({ ...formData, employeeId: e.target.value })}
-              className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg bg-white text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-[#1D9E75] focus:border-[#1D9E75] transition"
-              placeholder="Enter employee ID or name"
+              onChange={(val) => setFormData({ ...formData, employeeId: val })}
+              placeholder="Select an employee"
             />
           </div>
           <div>
@@ -233,6 +239,17 @@ export default function AttendancePage() {
     },
     fetchPolicy: "cache-and-network",
   });
+
+  const { data: empData, loading: empLoading } = useQuery<any>(GET_ALL_EMPLOYEES, {
+    variables: {
+      request: {
+        pageCriteria: { enablePage: false, pageSize: 1000, skip: 0 },
+      },
+    },
+    fetchPolicy: "cache-and-network",
+  });
+
+  const employeeList = empData?.getAllEmployees?.data?.employees ?? [];
 
   // --- GraphQL Mutations ---
   const [createAttendance, { loading: creating }] = useMutation(CREATE_ATTENDANCE);
@@ -361,7 +378,21 @@ export default function AttendancePage() {
   // --- Columns ---
 
   const columns: Column<AttendanceItem>[] = [
-    { header: "Employee", accessor: "employeeId" },
+    { 
+      header: "Employee", 
+      accessor: (row) => {
+        const emp = employeeList.find((e: any) => e.employeeId === row.employeeId);
+        if (emp) {
+          return (
+            <div>
+              <div className="font-medium text-gray-900">{`${emp.firstName} ${emp.lastName}`}</div>
+              <div className="text-[11px] text-gray-500">{emp.employeeCode}</div>
+            </div>
+          );
+        }
+        return <span className="text-gray-500">{row.employeeId || "Unknown"}</span>;
+      }
+    },
     {
       header: "Clock In",
       accessor: (row) => <span className="text-xs text-gray-600">{formatTime(row.clockIn)}</span>,
@@ -454,6 +485,7 @@ export default function AttendancePage() {
         setFormData={setFormData}
         isEdit={!!editingItem}
         loading={creating || updating}
+        employees={employeeList}
       />
 
       {/* Delete Confirmation Modal */}

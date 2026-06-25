@@ -1,4 +1,4 @@
-﻿using HRMS.Core.Postgres;
+using HRMS.Core.Postgres;
 using HRMS.API.Extensions;
 using HRMS.API.RegisterDependencies;
 using HRMS.Shared.Infrastructure.Extensions;
@@ -111,7 +111,8 @@ namespace HRMS.API
     [
         typeof(CreateTodoHandler).Assembly,
         typeof(CreateAttendanceHandler).Assembly,
-        typeof(CreateLeaveHandler).Assembly
+        typeof(CreateLeaveHandler).Assembly,
+        typeof(EmployeeFeature.Application.DTO.CreateEmployeeHandler).Assembly
     ]);
             services.AddInjectionPostgres(configuration);
             services.AddModulesDependencyInjection(configuration);

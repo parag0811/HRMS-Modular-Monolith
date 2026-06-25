@@ -6,6 +6,7 @@ import Table, { Column } from "@/components/common/Table";
 import { Plus, Search, Loader2, AlertCircle, X } from "lucide-react";
 import { GET_ALL_TODOS } from "@/graphql/query/getTodos";
 import { CREATE_TODO, UPDATE_TODO, DELETE_TODO } from "@/graphql/mutation/todoMutations";
+import { GET_ALL_EMPLOYEES } from "@/graphql/query/getEmployees";
 
 // --- Types ---
 
@@ -208,6 +209,17 @@ export default function TodoPage() {
     fetchPolicy: "cache-and-network",
   });
 
+  const { data: empData, loading: empLoading } = useQuery<any>(GET_ALL_EMPLOYEES, {
+    variables: {
+      request: {
+        pageCriteria: { enablePage: false, pageSize: 1000, skip: 0 },
+      },
+    },
+    fetchPolicy: "cache-and-network",
+  });
+
+  const employeeList = empData?.getAllEmployees?.data?.employees ?? [];
+
   // --- GraphQL Mutations ---
   const [createTodo, { loading: creating }] = useMutation(CREATE_TODO);
   const [updateTodo, { loading: updating }] = useMutation(UPDATE_TODO);
@@ -365,6 +377,23 @@ export default function TodoPage() {
     {
       header: "Status",
       accessor: (row) => <StatusBadge isCompleted={row.isCompleted} />,
+      width: "120px",
+    },
+    {
+      header: "Employee",
+      accessor: (row) => {
+        if (!row.userId) return <span className="text-gray-400 text-xs">—</span>;
+        const emp = employeeList.find((e: any) => e.userId === row.userId);
+        if (emp) {
+          return (
+            <div>
+              <div className="font-medium text-gray-900 text-xs">{`${emp.firstName} ${emp.lastName}`}</div>
+              <div className="text-[10px] text-gray-500">{emp.employeeCode}</div>
+            </div>
+          );
+        }
+        return <span className="text-gray-500 text-xs">{row.userId}</span>;
+      },
       width: "140px",
     },
     {

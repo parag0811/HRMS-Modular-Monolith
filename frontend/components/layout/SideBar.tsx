@@ -12,6 +12,7 @@ export default function Sidebar() {
         <Link href="/todo">Todo</Link>
         <Link href="/attendance">Attendance</Link>
         <Link href="/leave">Leave</Link>
+        <Link href="/employee">Employee</Link>
       </nav>
     </aside>
   );
